@@ -26,14 +26,30 @@ void sr_arpcache_sweepreqs(struct sr_instance *sr) {
     struct sr_arpreq* arp_request = arp_cache.requests;
 
     while (arp_request) {
-        process_arp_request(arp_request);
+        process_arp_request(sr, arp_request);
         arp_request = arp_request->next;
     }
 }
 
-void process_arp_request(struct sr_arpreq* request) {
+void process_arp_request(struct sr_instance *sr, struct sr_arpreq* request) {
+    time_t time_now = time(NULL);
+    time_t time_sent = request->sent;
+
+    if (difftime(time_now, time_sent) >= 1) {
+        /* only process request sent more than 1 sec ago */
+        if (request->times_sent >= 5) {
+            /* if the request has been sent more than
+            5 times, return a ICMP Host Unreachable signal */
+            struct sr_packet* packets = request->packets;
+            send_icmp_unreachable(sr, packets);
+        }
+    }
 }
 
+void send_icmp_unreachable(struct sr_instance* sr, struct sr_packet* packet) {
+    /* packet is the start of a linked list */
+    
+}
 /* You should not need to touch the rest of this code. */
 
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order.
