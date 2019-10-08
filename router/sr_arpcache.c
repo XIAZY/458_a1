@@ -18,6 +18,20 @@
 */
 void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
     /* Fill this in */
+    
+    /* get the list of ARP requests from ARP Cache */
+    struct sr_arpcache arp_cache = sr->cache;
+
+    /* arp_request is a linked list */
+    struct sr_arpreq* arp_request = arp_cache.requests;
+
+    while (arp_request) {
+        process_arp_request(arp_request);
+        arp_request = arp_request->next;
+    }
+}
+
+void process_arp_request(struct sr_arpreq* request) {
 }
 
 /* You should not need to touch the rest of this code. */
