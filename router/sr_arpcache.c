@@ -40,15 +40,21 @@ void process_arp_request(struct sr_instance *sr, struct sr_arpreq* request) {
         if (request->times_sent >= 5) {
             /* if the request has been sent more than
             5 times, return a ICMP Host Unreachable signal */
-            struct sr_packet* packets = request->packets;
-            send_icmp_unreachable(sr, packets);
+            send_icmp_unreachable(sr, request);
         }
     }
 }
 
-void send_icmp_unreachable(struct sr_instance* sr, struct sr_packet* packet) {
-    /* packet is the start of a linked list */
-    
+/* send icmp unreachable signal to hosts */
+void send_icmp_unreachable(struct sr_instance *sr, struct sr_arpreq *request) {
+  /* packet is the start of a linked list */
+  struct sr_packet *packet = request->packets;
+  while (packet) {
+    /* send icmp packet. wait for the completion of that method */
+
+    packet = packet->next;
+  }
+  sr_arpreq_destroy(&sr->cache, request);
 }
 /* You should not need to touch the rest of this code. */
 
