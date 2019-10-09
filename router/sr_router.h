@@ -76,4 +76,5 @@ void sr_set_ether_addr(struct sr_instance* , const unsigned char* );
 void sr_print_if_list(struct sr_instance* );
 
 void send_packet(struct sr_instance*, uint8_t*, unsigned int, struct sr_if*, uint32_t);
+void send_icmp_echo(struct sr_instance *sr, uint8_t *packet, unsigned int len, uint8_t code);
 #endif /* SR_ROUTER_H */

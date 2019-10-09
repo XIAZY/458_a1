@@ -65,7 +65,13 @@ void sr_init(struct sr_instance* sr)
  * the method call.
  *
  *---------------------------------------------------------------------*/
-
+void process_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
+  /* packet is an eth packet */
+  sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) packet + sizeof(sr_ethernet_hdr_t);
+  if (ip_header->ip_p == ip_protocol_icmp) {
+    send_icmp_echo(sr, packet, len, (uint8_t) 0);
+  }
+}
 void sr_handlepacket(struct sr_instance* sr,
         uint8_t * packet/* lent */,
         unsigned int len,
@@ -79,6 +85,9 @@ void sr_handlepacket(struct sr_instance* sr,
   printf("*** -> Received packet of length %d \n",len);
 
   /* fill in code here */
+  if (ethertype(packet) == ethertype_ip) {
+    process_ip_packet(sr, packet, len, interface);
+  }
 
 }/* end sr_ForwardPacket */
 
@@ -101,8 +110,7 @@ void send_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, stru
   }
 }
 
-void send_icmp_echo(struct sr_instance *sr, uint8_t *packet, unsigned int len,
-                    uint8_t type, uint8_t code) { 
+void send_icmp_echo(struct sr_instance *sr, uint8_t *packet, unsigned int len, uint8_t code) { 
   /* set ip header src and dst */
   sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
   struct sr_rt *rt_entry = get_longest_prefix_match(sr, ip_header->ip_src);
@@ -114,6 +122,6 @@ void send_icmp_echo(struct sr_instance *sr, uint8_t *packet, unsigned int len,
   icmp_header->icmp_sum = 0;
   icmp_header->icmp_sum = cksum(icmp_header, ntohs(ip_header->ip_len) - (ip_header->ip_hl * 4));
   icmp_header->icmp_code = code;
-  icmp_header->icmp_type = type;
+  icmp_header->icmp_type = icmp_type_echo_reply;
   send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
 }
