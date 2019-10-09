@@ -45,4 +45,7 @@ void print_hdr_arp(uint8_t *buf);
 /* prints all headers, starting from eth */
 void print_hdrs(uint8_t *buf, uint32_t length);
 
+/* custom methods */
+struct sr_instance;
+void sr_send_icmp_message(struct sr_instance*, uint8_t*, unsigned int, char*);
 #endif /* -- SR_UTILS_H -- */

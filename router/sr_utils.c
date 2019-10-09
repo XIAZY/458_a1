@@ -224,20 +224,20 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     icmp_header->icmp_sum = cksum(icmp_header, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
 
     /* icmp also need arp cache lookup */
-    // struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
-    // if (!entry) {
-    //   struct sr_arpreq *request = sr_arpcache_queuereq(&(sr->cache), ip_hdr->ip_dst, packet,
-    //     len, out_iface->name);
-    //     // handle_arpreq(sr, request);
-    // }
+    /*     struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
+    if (!entry) {
+      struct sr_arpreq *request = sr_arpcache_queuereq(&(sr->cache), ip_hdr->ip_dst, packet,
+        len, out_iface->name);
+        // handle_arpreq(sr, request);
+    }
 
-    // struct sr_if* out_interface = sr_get_interface(sr, interface->name);
+    struct sr_if* out_interface = sr_get_interface(sr, interface->name); */
 
     memcpy(eth_header->ether_shost, eth_header->ether_dhost, ETHER_ADDR_LEN);
-    // memcpy(eth_header->ether_dhost, out_interface->addr, ETHER_ADDR_LEN);
+    /*     memcpy(eth_header->ether_dhost, out_interface->addr, ETHER_ADDR_LEN); */
 
     /* Send packet */
-    // sr_send_packet(sr, packet, len, out_interface->name);
+    /*     sr_send_packet(sr, packet, len, out_interface->name); */
 }
 
 /*
@@ -259,12 +259,12 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     sr_ethernet_hdr_t* eth_header = (sr_ethernet_hdr_t*)icmp_packet;
     /* icmp also need arp cache lookup */
     memcpy(eth_header->ether_shost, eth_header->ether_dhost, ETHER_ADDR_LEN);
-    // memcpy(eth_header->ether_dhost, /* find destination host */, ETHER_ADDR_LEN);
+    /*     memcpy(eth_header->ether_dhost,  find destination host , ETHER_ADDR_LEN); */
 
     /* Create IP header */
     sr_ip_hdr_t* ip_header = (sr_ip_hdr_t *)(icmp_packet + sizeof(sr_ethernet_hdr_t));
     uint32_t requestor_ip = ip_header->ip_src;
-    // ip_header->ip_src = ;
+    /*     ip_header->ip_src = ; */
     ip_header->ip_dst = requestor_ip;
 
     /* Create ICMP header */
@@ -304,5 +304,5 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     /* Compute total length of the packet */
 
     /* Send packet */
-    // sr_send_packet(sr, packet, len, out_iface->name);
+    /*     sr_send_packet(sr, packet, len, out_iface->name); */
 }
