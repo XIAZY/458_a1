@@ -196,7 +196,7 @@ void send_icmp_port_unreachable (struct sr_instance* sr, uint8_t * packet, unsig
 
 }
 
-struct sr_rt * get_longest_matching_prefix (struct sr_instance* sr, uint32_t ip_dst) {
+struct sr_rt * routing_lpm (struct sr_instance* sr, uint32_t ip_dst) {
     struct sr_rt *routing_table = sr->routing_table;
     int len = 0; 
     struct sr_rt* rt_walker = 0;
