@@ -82,3 +82,21 @@ void sr_handlepacket(struct sr_instance* sr,
 
 }/* end sr_ForwardPacket */
 
+
+/* packet is an ethernet packet */
+void send_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, struct sr_if* interface, uint32_t destination_ip) {
+  struct sr_arpentry* entry = sr_arpcache_lookup(&sr->cache, destination_ip);
+  if (entry) {
+    /* cast packet to a ethernet header */
+    sr_ethernet_hdr_t* ethernet_header = (sr_ethernet_hdr_t*) packet;
+    /* set dest and source mac */
+    memcpy(ethernet_header->ether_dhost, entry->mac, ETHER_ADDR_LEN);
+    memcpy(ethernet_header->ether_shost, interface->addr, ETHER_ADDR_LEN);
+    sr_send_packet(sr, packet, len, interface->name);
+  } else {
+    /* process arp */
+    process_arp_request(sr, sr_arpcache_queuereq(
+      &sr->cache, destination_ip, packet, len, interface->name
+    ));
+  }
+}

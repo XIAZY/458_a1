@@ -51,7 +51,7 @@ void send_icmp_unreachable(struct sr_instance *sr, struct sr_arpreq *request) {
   /* packet is the start of a linked list */
   struct sr_packet *packet = request->packets;
   while (packet) {
-    sr_send_unreachable_icmp_msg(sr, packet, packet->len, unreachable_host);
+    sr_send_unreachable_icmp_msg(sr, packet->buf, packet->len, unreachable_host);
     packet = packet->next;
   }
   sr_arpreq_destroy(&sr->cache, request);
