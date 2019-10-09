@@ -100,3 +100,20 @@ void send_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, stru
     ));
   }
 }
+
+void send_icmp_echo(struct sr_instance *sr, uint8_t *packet, unsigned int len,
+                    uint8_t type, uint8_t code) { 
+  /* set ip header src and dst */
+  sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+  struct sr_rt *rt_entry = get_longest_prefix_match(sr, ip_header->ip_src);
+  struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
+  uint32_t dst = ip_header->ip_src;
+  ip_header->ip_src = ip_header->ip_dst;
+  ip_header->ip_dst = dst;
+  sr_icmp_hdr_t *icmp_header = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+  icmp_header->icmp_sum = 0;
+  icmp_header->icmp_sum = cksum(icmp_header, ntohs(ip_header->ip_len) - (ip_header->ip_hl * 4));
+  icmp_header->icmp_code = code;
+  icmp_header->icmp_type = type;
+  send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
+}
