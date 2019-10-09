@@ -70,6 +70,7 @@
 #include <time.h>
 #include <pthread.h>
 #include "sr_if.h"
+#include "sr_utils.h"
 
 #define SR_ARPCACHE_SZ    100  
 #define SR_ARPCACHE_TO    15.0

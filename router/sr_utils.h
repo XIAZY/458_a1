@@ -27,6 +27,7 @@
 
 #ifndef SR_UTILS_H
 #define SR_UTILS_H
+#include "sr_if.h"
 
 uint16_t cksum(const void *_data, int len);
 
@@ -46,6 +47,6 @@ void print_hdr_arp(uint8_t *buf);
 void print_hdrs(uint8_t *buf, uint32_t length);
 
 /* custom methods */
-struct sr_instance;
 void sr_send_icmp_message(struct sr_instance*, uint8_t*, unsigned int, char*);
+void sr_send_unreachable_icmp_msg(struct sr_instance*, uint8_t*, unsigned int, uint8_t);
 #endif /* -- SR_UTILS_H -- */

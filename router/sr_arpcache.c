@@ -10,6 +10,7 @@
 #include "sr_router.h"
 #include "sr_if.h"
 #include "sr_protocol.h"
+#include "sr_utils.h"
 
 /* 
   This function gets called every second. For each request sent out, we keep
@@ -50,8 +51,7 @@ void send_icmp_unreachable(struct sr_instance *sr, struct sr_arpreq *request) {
   /* packet is the start of a linked list */
   struct sr_packet *packet = request->packets;
   while (packet) {
-    /* send icmp packet. wait for the completion of that method */
-
+    sr_send_unreachable_icmp_msg(sr, packet, packet->len, unreachable_host);
     packet = packet->next;
   }
   sr_arpreq_destroy(&sr->cache, request);

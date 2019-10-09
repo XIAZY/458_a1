@@ -248,6 +248,8 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
  * Destination host unreachable: type 3 code 1
  * Destination port unreachable: type 3 code 3
  * Time exceeded: type 11 code 0
+ * 
+ * i think this method is problematic
  */
  void sr_send_unreachable_icmp_msg(struct sr_instance* sr, uint8_t* packet,
    unsigned int len, uint8_t icmp_case) {
