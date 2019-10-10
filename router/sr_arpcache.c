@@ -10,6 +10,7 @@
 #include "sr_router.h"
 #include "sr_if.h"
 #include "sr_protocol.h"
+#include "sr_utils.h"
 
 /* 
   This function gets called every second. For each request sent out, we keep
@@ -18,8 +19,43 @@
 */
 void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
     /* Fill this in */
+    
+    /* get the list of ARP requests from ARP Cache */
+    struct sr_arpcache arp_cache = sr->cache;
+
+    /* arp_request is a linked list */
+    struct sr_arpreq* arp_request = arp_cache.requests;
+
+    while (arp_request) {
+        process_arp_request(sr, arp_request);
+        arp_request = arp_request->next;
+    }
 }
 
+void process_arp_request(struct sr_instance *sr, struct sr_arpreq* request) {
+    time_t time_now = time(NULL);
+    time_t time_sent = request->sent;
+
+    if (difftime(time_now, time_sent) >= 1) {
+        /* only process request sent more than 1 sec ago */
+        if (request->times_sent >= 5) {
+            /* if the request has been sent more than
+            5 times, return a ICMP Host Unreachable signal */
+            send_icmp_unreachable(sr, request);
+        }
+    }
+}
+
+/* send icmp unreachable signal to hosts */
+void send_icmp_unreachable(struct sr_instance *sr, struct sr_arpreq *request) {
+  /* packet is the start of a linked list */
+  struct sr_packet *packet = request->packets;
+  while (packet) {
+    sr_send_unreachable_icmp_msg(sr, packet->buf, packet->len, unreachable_host);
+    packet = packet->next;
+  }
+  sr_arpreq_destroy(&sr->cache, request);
+}
 /* You should not need to touch the rest of this code. */
 
 /* Checks if an IP->MAC mapping is in the cache. IP is in network byte order.

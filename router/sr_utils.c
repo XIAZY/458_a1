@@ -183,3 +183,128 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
   }
 }
 
+/*
+ * Send an ICMP message to sending host when an echo request is received.
+ *
+ * Echo reply: type 0
+ *
+ * Question which interface?
+ */
+ void sr_send_icmp_message(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
+   /*
+    * ICMP message: MAC header | IP header | ICMP header | Data
+    * ICMP header: type | code | checksum
+    *
+    * Send original packet back to the sender.
+    */
+
+    /* Modify packet ethernet header */
+    sr_ethernet_hdr_t* eth_header = (sr_ethernet_hdr_t*)packet;
+
+    /* Modify IP header */
+    sr_ip_hdr_t* ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+
+    /* Get ip address of sender wich is the echo requestor, and assign as
+     * destination address.
+     * And source address will be specific-destination address of
+     * the corresponding ICMP Echo Request.
+     */
+    uint32_t requestor_ip = ip_header->ip_src;
+    ip_header->ip_src = ip_header->ip_dst;
+    ip_header->ip_dst = requestor_ip;
+
+    /* Create ICMP header */
+    sr_icmp_hdr_t* icmp_header = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+    icmp_header->icmp_type = icmp_type_echo_reply;
+    icmp_header->icmp_code = icmp_type_echo_reply;
+
+    /* clear checksum field to 0 */
+    icmp_header->icmp_sum = 0;
+    /* compute checksum for icmp header (starting with the ICMP Type field) */
+    icmp_header->icmp_sum = cksum(icmp_header, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
+
+    /* icmp also need arp cache lookup */
+    /*     struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
+    if (!entry) {
+      struct sr_arpreq *request = sr_arpcache_queuereq(&(sr->cache), ip_hdr->ip_dst, packet,
+        len, out_iface->name);
+        // handle_arpreq(sr, request);
+    }
+
+    struct sr_if* out_interface = sr_get_interface(sr, interface->name); */
+
+    memcpy(eth_header->ether_shost, eth_header->ether_dhost, ETHER_ADDR_LEN);
+    /*     memcpy(eth_header->ether_dhost, out_interface->addr, ETHER_ADDR_LEN); */
+
+    /* Send packet */
+    /*     sr_send_packet(sr, packet, len, out_interface->name); */
+}
+
+/*
+ * Send an ICMP message to sending host when the destination is unreachable or
+ * in the case of timeout.
+ *
+ * Destination net unreachable: type 3 code 0
+ * Destination host unreachable: type 3 code 1
+ * Destination port unreachable: type 3 code 3
+ * Time exceeded: type 11 code 0
+ * 
+ * i think this method is problematic
+ */
+ void sr_send_unreachable_icmp_msg(struct sr_instance* sr, uint8_t* packet,
+   unsigned int len, uint8_t icmp_case) {
+    /* Create a new packet for icmp message */
+    unsigned int length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t) + len;
+    uint8_t* icmp_packet = malloc(length);
+
+    /* Create ethernet header */
+    sr_ethernet_hdr_t* eth_header = (sr_ethernet_hdr_t*)icmp_packet;
+    /* icmp also need arp cache lookup */
+    memcpy(eth_header->ether_shost, eth_header->ether_dhost, ETHER_ADDR_LEN);
+    /*     memcpy(eth_header->ether_dhost,  find destination host , ETHER_ADDR_LEN); */
+
+    /* Create IP header */
+    sr_ip_hdr_t* ip_header = (sr_ip_hdr_t *)(icmp_packet + sizeof(sr_ethernet_hdr_t));
+    uint32_t requestor_ip = ip_header->ip_src;
+    /*     ip_header->ip_src = ; */
+    ip_header->ip_dst = requestor_ip;
+
+    /* Create ICMP header */
+    sr_icmp_t3_hdr_t* icmp_header = (sr_icmp_t3_hdr_t *)(icmp_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+
+    /* Find correspond icmp type and code */
+    switch (icmp_case) {
+      case unreachable_net: {
+        icmp_header->icmp_type = icmp_type_unreachable;
+        icmp_header->icmp_code = icmp_code_unreachable_net;
+        break;
+      }
+      case unreachable_host: {
+        icmp_header->icmp_type = icmp_type_unreachable;
+        icmp_header->icmp_code = icmp_code_unreachable_net;
+        break;
+      }
+      case unreachable_port: {
+        icmp_header->icmp_type = icmp_type_unreachable;
+        icmp_header->icmp_code = icmp_code_unreachable_net;
+        break;
+      }
+      case timeout: {
+        icmp_header->icmp_type = icmp_type_unreachable;
+        icmp_header->icmp_code = icmp_code_unreachable_net;
+        break;
+      }
+      default: {
+        fprintf(stderr, "Unrecognized icmp case (not destination unreachable or time exceeded).\n");
+      }
+    }
+
+    /* compute checksum for icmp header */
+    icmp_header->icmp_sum = 0;
+
+
+    /* Compute total length of the packet */
+
+    /* Send packet */
+    /*     sr_send_packet(sr, packet, len, out_iface->name); */
+}

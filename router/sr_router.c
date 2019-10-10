@@ -65,6 +65,20 @@ void sr_init(struct sr_instance* sr)
  * the method call.
  *
  *---------------------------------------------------------------------*/
+void process_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
+  /* handle ip packet here */
+  /* packet is an eth packet */
+  sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) packet + sizeof(sr_ethernet_hdr_t);
+  if (ip_header->ip_p == ip_protocol_icmp) {
+    send_icmp_echo(sr, packet, len, (uint8_t) 0);
+  }
+}
+
+void process_arp_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
+  /* handle arp packet here */
+  /* packet is an eth packet */
+
+}
 
 void sr_handlepacket(struct sr_instance* sr,
         uint8_t * packet/* lent */,
@@ -79,6 +93,45 @@ void sr_handlepacket(struct sr_instance* sr,
   printf("*** -> Received packet of length %d \n",len);
 
   /* fill in code here */
+  if (ethertype(packet) == ethertype_ip) {
+    process_ip_packet(sr, packet, len, interface);
+  } else if (ethertype(packet) == ethertype_arp) {
+    process_arp_packet(sr, packet, len, interface);
+  }
 
 }/* end sr_ForwardPacket */
 
+
+/* packet is an ethernet packet */
+void send_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, struct sr_if* interface, uint32_t destination_ip) {
+  struct sr_arpentry* entry = sr_arpcache_lookup(&sr->cache, destination_ip);
+  if (entry) {
+    /* cast packet to a ethernet header */
+    sr_ethernet_hdr_t* ethernet_header = (sr_ethernet_hdr_t*) packet;
+    /* set dest and source mac */
+    memcpy(ethernet_header->ether_dhost, entry->mac, ETHER_ADDR_LEN);
+    memcpy(ethernet_header->ether_shost, interface->addr, ETHER_ADDR_LEN);
+    sr_send_packet(sr, packet, len, interface->name);
+  } else {
+    /* process arp */
+    process_arp_request(sr, sr_arpcache_queuereq(
+      &sr->cache, destination_ip, packet, len, interface->name
+    ));
+  }
+}
+
+void send_icmp_echo(struct sr_instance *sr, uint8_t *packet, unsigned int len, uint8_t code) { 
+  /* set ip header src and dst */
+  sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+  struct sr_rt *rt_entry = get_longest_prefix_match(sr, ip_header->ip_src);
+  struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
+  uint32_t dst = ip_header->ip_src;
+  ip_header->ip_src = ip_header->ip_dst;
+  ip_header->ip_dst = dst;
+  sr_icmp_hdr_t *icmp_header = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+  icmp_header->icmp_sum = 0;
+  icmp_header->icmp_sum = cksum(icmp_header, ntohs(ip_header->ip_len) - (ip_header->ip_hl * 4));
+  icmp_header->icmp_code = code;
+  icmp_header->icmp_type = icmp_type_echo_reply;
+  send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
+}

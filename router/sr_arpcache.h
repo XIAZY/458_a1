@@ -70,6 +70,7 @@
 #include <time.h>
 #include <pthread.h>
 #include "sr_if.h"
+#include "sr_utils.h"
 
 #define SR_ARPCACHE_SZ    100  
 #define SR_ARPCACHE_TO    15.0
@@ -147,4 +148,7 @@ int   sr_arpcache_init(struct sr_arpcache *cache);
 int   sr_arpcache_destroy(struct sr_arpcache *cache);
 void *sr_arpcache_timeout(void *cache_ptr);
 
+/* helper methods */
+void process_arp_request(struct sr_instance*, struct sr_arpreq*);
+void send_icmp_unreachable(struct sr_instance*, struct sr_arpreq*);
 #endif
