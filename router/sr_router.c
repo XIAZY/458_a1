@@ -66,12 +66,20 @@ void sr_init(struct sr_instance* sr)
  *
  *---------------------------------------------------------------------*/
 void process_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
+  /* handle ip packet here */
   /* packet is an eth packet */
   sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) packet + sizeof(sr_ethernet_hdr_t);
   if (ip_header->ip_p == ip_protocol_icmp) {
     send_icmp_echo(sr, packet, len, (uint8_t) 0);
   }
 }
+
+void process_arp_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
+  /* handle arp packet here */
+  /* packet is an eth packet */
+
+}
+
 void sr_handlepacket(struct sr_instance* sr,
         uint8_t * packet/* lent */,
         unsigned int len,
@@ -87,6 +95,8 @@ void sr_handlepacket(struct sr_instance* sr,
   /* fill in code here */
   if (ethertype(packet) == ethertype_ip) {
     process_ip_packet(sr, packet, len, interface);
+  } else if (ethertype(packet) == ethertype_arp) {
+    process_arp_packet(sr, packet, len, interface);
   }
 
 }/* end sr_ForwardPacket */
