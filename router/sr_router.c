@@ -66,20 +66,12 @@ void sr_init(struct sr_instance* sr)
  *
  *---------------------------------------------------------------------*/
 void process_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
-  /* handle ip packet here */
   /* packet is an eth packet */
   sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) packet + sizeof(sr_ethernet_hdr_t);
   if (ip_header->ip_p == ip_protocol_icmp) {
     send_icmp_echo(sr, packet, len, (uint8_t) 0);
   }
 }
-
-void process_arp_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
-  /* handle arp packet here */
-  /* packet is an eth packet */
-
-}
-
 void sr_handlepacket(struct sr_instance* sr,
         uint8_t * packet/* lent */,
         unsigned int len,
@@ -95,8 +87,6 @@ void sr_handlepacket(struct sr_instance* sr,
   /* fill in code here */
   if (ethertype(packet) == ethertype_ip) {
     process_ip_packet(sr, packet, len, interface);
-  } else if (ethertype(packet) == ethertype_arp) {
-    process_arp_packet(sr, packet, len, interface);
   }
 
 }/* end sr_ForwardPacket */
@@ -134,4 +124,104 @@ void send_icmp_echo(struct sr_instance *sr, uint8_t *packet, unsigned int len, u
   icmp_header->icmp_code = code;
   icmp_header->icmp_type = icmp_type_echo_reply;
   send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
+}
+
+void sr_handle_ip_packet(struct sr_instance* sr,
+        uint8_t * packet/* lent */,
+        unsigned int len,
+        char* interface/* lent */)
+{
+  struct sr_arpcache *sr_cache = &sr->cache;
+  sr_ethernet_hdr_t* ethernet_header = (sr_ethernet_hdr_t*) packet;
+  printf("*** -> Received IP packet of length %d \n",len);
+  sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+  struct sr_rt *rt_entry = get_longest_prefix_match(sr, ip_hdr->ip_src);
+
+  /* Check whether the length reach the minimum length requirment. */
+  if (len < sizeof (sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)) {
+    perror("Error: The header length does not satisfy the minimum requirement");
+  }
+
+  /* Checksum for ICMP. */
+  sr_icmp_hdr_t* icmp_hdr = (sr_icmp_hdr_t*)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+  uint16_t received_checksum = icmp_hdr->icmp_sum;
+  uint16_t actual_checksum = cksum(icmp_hdr, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
+  icmp_hdr->icmp_sum = received_checksum;
+  if(received_checksum != actual_checksum) {
+    perror("Error: The received checksum does not equal to the actual one.");
+  }
+
+  struct sr_if *dest_itf = NULL;
+  struct sr_if* itf = sr->if_list;
+  while (itf) {
+    if (itf->ip == ip_hdr->ip_dst) {
+      dest_itf = itf;
+      break;
+    }
+    itf = itf->next;
+  }
+
+  /* If the IP packet is for interfaces of the router*/
+  if (dest_itf->ip) {
+    printf("The packet is for one of the interfaces of this router\n");
+    uint8_t ip_p = ip_protocol(&ip_hdr->ip_p); 
+    switch(ip_p) {
+      /* If the ip protocol is ICMP*/
+      case ip_protocol_icmp: {
+        printf("Packet is a ICMP echo request.\n");
+              
+        /* Check length reach the minimum length requirement of ICMP */
+        if(len < sizeof(sr_ethernet_hdr_t) + sizeof(sr_icmp_hdr_t) + (ip_hdr->ip_hl * 4)) {
+          perror("Error: The header length does not satisfy the minimum requirement");
+        }
+
+
+        /* Checksum for ICMP. */
+        sr_icmp_hdr_t* icmp_hdr = (sr_icmp_hdr_t*)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+        uint16_t received_checksum = icmp_hdr->icmp_sum;
+        uint16_t actual_checksum = cksum(icmp_hdr, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
+        icmp_hdr->icmp_sum = received_checksum;
+        if(received_checksum != actual_checksum) {
+          perror("Error: The received checksum does not equal to the actual one.");
+        }
+
+        /* If it's ICMP echo req, send echo reply */
+        if (icmp_hdr->icmp_type == icmp_type_echo_reply) {
+          struct sr_if* itf = sr_get_interface(sr, interface);
+          send_packet(sr, packet, len, itf, rt_entry->gw.s_addr);
+        } else {
+          printf("The type of ICMP packet is unknown.\n");
+        }
+
+      /* If it's TCP / UDP, send ICMP port unreachable */
+      } 
+      case ip_protocol_tcp:
+      case ip_protocol_udp: {
+        printf("Packet is a TCP/UDP message.\n");
+        sr_send_unreachable_icmp_msg(sr, packet, len, icmp_type_unreachable);
+      }
+    }
+  /* If the IP Packet is not for interfaces of the router. */
+  } 
+ //    else {
+ //    printf("If the IP Packet is not for interfaces of the router.\n");
+
+ //    /* check routing table, and perform LPM */ 
+ //    struct sr_rt* table_entry = get_longest_matching_prefix(sr, ip_hdr->ip_dst);
+ //    if (table_entry) {
+ //        /* check ARP cache */
+ //        struct sr_arpentry * arp_entry = sr_arpcache_lookup (sr_cache, table_entry->gw.s_addr); 
+ //        /* send frame to next hop*/
+ //        if (arp_entry) {
+ //          printf("There is a match in the ARP cache\n");
+ //        /* */ 
+ //        } else {
+ // /* TODO: to be continued */
+ //        }
+ //    } else {
+ //      /* TODO: to be continued */
+
+ //    }
+
+ //  }
 }
