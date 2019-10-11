@@ -217,7 +217,7 @@ void sr_handle_ip_packet(struct sr_instance* sr,
       case ip_protocol_tcp:
       case ip_protocol_udp: {
         printf("Packet is a TCP/UDP message.\n");
-        sr_send_unreachable_icmp_msg(sr, packet, len, icmp_type_unreachable);
+        sr_send_t3_icmp_msg(sr, packet, len, icmp_type_unreachable);
       }
     }
   /* If the IP Packet is not for interfaces of the router. */

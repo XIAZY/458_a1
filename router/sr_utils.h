@@ -50,4 +50,7 @@ void print_hdrs(uint8_t *buf, uint32_t length);
 /* custom methods */
 void sr_send_icmp_message(struct sr_instance*, uint8_t*, unsigned int);
 void sr_send_t3_icmp_msg(struct sr_instance*, uint8_t*, unsigned int, uint8_t);
+
+/* sr_router.c */
+void send_packet(struct sr_instance*, uint8_t*, unsigned int, struct sr_if*, uint32_t);
 #endif /* -- SR_UTILS_H -- */
