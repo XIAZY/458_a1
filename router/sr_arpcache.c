@@ -37,11 +37,14 @@ void process_arp_request(struct sr_instance *sr, struct sr_arpreq* request) {
     time_t time_sent = request->sent;
 
     if (difftime(time_now, time_sent) >= 1) {
+        printf("arp request difftime >= 1\n");
         /* only process request sent more than 1 sec ago */
         if (request->times_sent >= 5) {
+        printf("arp request times sent >= 5\n");
             /* if the request has been sent more than
             5 times, return a ICMP Host Unreachable signal */
             send_icmp_unreachable(sr, request);
+        } else {
         }
     }
 }

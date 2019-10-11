@@ -68,24 +68,77 @@ void sr_init(struct sr_instance* sr)
 void process_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
   /* packet is an eth packet */
   printf("got an ip packet\n");
-  sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) packet + sizeof(sr_ethernet_hdr_t);
+  sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t));
   if (ip_header->ip_p == ip_protocol_icmp) {
-    send_icmp_echo(sr, packet, len, (uint8_t) 0);
+    printf("got icmp request\n");
+    sr_send_icmp_message(sr, packet, len);
   }
 }
 
-void process_arp_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
+void process_arp_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* if_str) {
     /* packet is an eth packet */
+    /* validate the packet */
     printf("got an arp packet\n");
     
     sr_ethernet_hdr_t* ethernet_header = (sr_ethernet_hdr_t*) packet;
-    sr_arp_hdr_t* arp_header = (sr_arp_hdr_t*) packet + sizeof(sr_ethernet_hdr_t);
-    uint32_t target_ip = arp_header->ar_tip;
+    sr_arp_hdr_t* arp_header = (sr_arp_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t));
 
-    struct sr_if* target_interface = get_interface_from_ip(sr, target_ip);
-    if (!target_interface) {
-      printf("interface not found for ip %d\n", target_ip);
+    if (len < sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t)) {
+      printf("arp request is too short\n");
+      return;
     }
+
+    if (ntohs(arp_header->ar_pro) != ethertype_ip) {
+      printf("arp request addr format is not ip\n");
+      return;
+    }
+
+    if (ntohs(arp_header->ar_hrd) != arp_hrd_ethernet) {
+      printf("arp request hardware type is not ethernet\n");
+      return;
+    }
+
+    struct sr_if* interface = sr_get_interface(sr, if_str);
+    if (interface->ip != arp_header->ar_tip) {
+      printf("this arp request is not for us\n");
+      return;
+    }
+
+
+    if (ntohs(arp_header->ar_op) == arp_op_request) {
+      process_arp_packet_request(sr, packet, len, interface);
+    }
+}
+
+void process_arp_packet_request(struct sr_instance* sr, uint8_t* packet, unsigned int len, struct sr_if* interface) {
+  /* packet is a ethernet packet */
+  printf("got an arp request\n");
+  sr_ethernet_hdr_t* ethernet_header = (sr_ethernet_hdr_t*) packet;
+  sr_arp_hdr_t* arp_header = (sr_arp_hdr_t*) (packet + sizeof(sr_ethernet_hdr_t));
+  
+  /* construct the reply arp header */
+  /* set hardware format to ethernet */
+  arp_header->ar_hrd = htons(arp_hrd_ethernet);
+  /* set protocal address format to ip */
+  arp_header->ar_pro = htons(ethertype_ip);
+  /* set len of addr to ether addr len */
+  arp_header->ar_hln = ETHER_ADDR_LEN;
+  /* set len of ip addr to be 32 bit */
+  arp_header->ar_pln = sizeof(uint32_t);
+  /* set op type to be arp reply */
+  arp_header->ar_op = htons(arp_op_reply);
+  /* set dest ip to to source ip of request */
+  arp_header->ar_tip = arp_header->ar_sip;
+  /* set source ip to be the ip of interface */
+  arp_header->ar_sip = interface->ip;
+
+  /* construct ethernet header */
+  /* change dest host to source */
+  memcpy(ethernet_header->ether_dhost, ethernet_header->ether_shost, ETHER_ADDR_LEN);
+  /* change src host to interface */
+  memcpy(ethernet_header->ether_shost, interface, ETHER_ADDR_LEN);
+
+  send_packet(sr, packet, len, interface, arp_header->ar_tip);
 }
 
 void sr_handlepacket(struct sr_instance* sr,
@@ -113,8 +166,10 @@ void sr_handlepacket(struct sr_instance* sr,
 
 /* packet is an ethernet packet */
 void send_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, struct sr_if* interface, uint32_t destination_ip) {
+  printf("send packet\n");
   struct sr_arpentry* entry = sr_arpcache_lookup(&sr->cache, destination_ip);
   if (entry) {
+    printf("found entry\n");
     /* cast packet to a ethernet header */
     sr_ethernet_hdr_t* ethernet_header = (sr_ethernet_hdr_t*) packet;
     /* set dest and source mac */
@@ -122,6 +177,7 @@ void send_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, stru
     memcpy(ethernet_header->ether_shost, interface->addr, ETHER_ADDR_LEN);
     sr_send_packet(sr, packet, len, interface->name);
   } else {
+    printf("entry unfound\n");
     /* process arp */
     process_arp_request(sr, sr_arpcache_queuereq(
       &sr->cache, destination_ip, packet, len, interface->name

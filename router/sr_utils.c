@@ -223,6 +223,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     /* exit interface */
     struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
     /* Send packet */
+    printf("send icmp echo back\n");
     send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
 }
 
