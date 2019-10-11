@@ -188,9 +188,8 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
  *
  * Echo reply: type 0
  *
- * Question which interface?
  */
- void sr_send_icmp_message(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
+ void sr_send_icmp_message(struct sr_instance* sr, uint8_t* packet, unsigned int len) {
    /*
     * ICMP message: MAC header | IP header | ICMP header | Data
     * ICMP header: type | code | checksum
@@ -198,11 +197,12 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     * Send original packet back to the sender.
     */
 
-    /* Modify packet ethernet header */
-    sr_ethernet_hdr_t* eth_header = (sr_ethernet_hdr_t*)packet;
-
     /* Modify IP header */
-    sr_ip_hdr_t* ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+    sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+
+    struct sr_rt *rt_entry = get_longest_prefix_match(sr, ip_header->ip_src);
+    /* exit interface */
+    struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
 
     /* Get ip address of sender wich is the echo requestor, and assign as
      * destination address.
@@ -214,7 +214,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     ip_header->ip_dst = requestor_ip;
 
     /* Create ICMP header */
-    sr_icmp_hdr_t* icmp_header = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+    sr_icmp_hdr_t *icmp_header = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
     icmp_header->icmp_type = icmp_type_echo_reply;
     icmp_header->icmp_code = icmp_type_echo_reply;
 
@@ -223,22 +223,10 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     /* compute checksum for icmp header (starting with the ICMP Type field) */
     icmp_header->icmp_sum = cksum(icmp_header, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
 
-    /* icmp also need arp cache lookup */
-    /*     struct sr_arpentry *entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_dst);
-    if (!entry) {
-      struct sr_arpreq *request = sr_arpcache_queuereq(&(sr->cache), ip_hdr->ip_dst, packet,
-        len, out_iface->name);
-        // handle_arpreq(sr, request);
-    }
-
-    struct sr_if* out_interface = sr_get_interface(sr, interface->name); */
-
-    memcpy(eth_header->ether_shost, eth_header->ether_dhost, ETHER_ADDR_LEN);
-    /*     memcpy(eth_header->ether_dhost, out_interface->addr, ETHER_ADDR_LEN); */
-
     /* Send packet */
-    /*     sr_send_packet(sr, packet, len, out_interface->name); */
+    send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
 }
+
 
 /*
  * Send an ICMP message to sending host when the destination is unreachable or
@@ -248,10 +236,10 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
  * Destination host unreachable: type 3 code 1
  * Destination port unreachable: type 3 code 3
  * Time exceeded: type 11 code 0
- * 
+ *
  * i think this method is problematic
  */
- void sr_send_unreachable_icmp_msg(struct sr_instance* sr, uint8_t* packet,
+ void sr_send_t3_icmp_msg(struct sr_instance* sr, uint8_t* packet,
    unsigned int len, uint8_t icmp_case) {
     /* Create a new packet for icmp message */
     unsigned int length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t) + len;
