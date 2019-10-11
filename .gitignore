@@ -2,3 +2,15 @@
 *.o
 router/sr
 .idea
+pox
+http_server1/nohup.out
+http_server2/nohup.out
+pox_module/cs144/__init__.pyo
+pox_module/cs144/ofhandler.pyo
+pox_module/cs144/srhandler.pyo
+pox_module/cs144/VNSProtocol.pyo
+pox_module/cs144.egg-info/dependency_links.txt
+pox_module/cs144.egg-info/PKG-INFO
+pox_module/cs144.egg-info/requires.txt
+pox_module/cs144.egg-info/SOURCES.txt
+pox_module/cs144.egg-info/top_level.txt

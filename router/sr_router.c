@@ -67,11 +67,27 @@ void sr_init(struct sr_instance* sr)
  *---------------------------------------------------------------------*/
 void process_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
   /* packet is an eth packet */
+  printf("got an ip packet\n");
   sr_ip_hdr_t* ip_header = (sr_ip_hdr_t*) packet + sizeof(sr_ethernet_hdr_t);
   if (ip_header->ip_p == ip_protocol_icmp) {
     send_icmp_echo(sr, packet, len, (uint8_t) 0);
   }
 }
+
+void process_arp_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface) {
+    /* packet is an eth packet */
+    printf("got an arp packet\n");
+    
+    sr_ethernet_hdr_t* ethernet_header = (sr_ethernet_hdr_t*) packet;
+    sr_arp_hdr_t* arp_header = (sr_arp_hdr_t*) packet + sizeof(sr_ethernet_hdr_t);
+    uint32_t target_ip = arp_header->ar_tip;
+
+    struct sr_if* target_interface = get_interface_from_ip(sr, target_ip);
+    if (!target_interface) {
+      printf("interface not found for ip %d\n", target_ip);
+    }
+}
+
 void sr_handlepacket(struct sr_instance* sr,
         uint8_t * packet/* lent */,
         unsigned int len,
@@ -85,8 +101,11 @@ void sr_handlepacket(struct sr_instance* sr,
   printf("*** -> Received packet of length %d \n",len);
 
   /* fill in code here */
-  if (ethertype(packet) == ethertype_ip) {
+  uint16_t eth_type = ethertype(packet);
+  if (eth_type == ethertype_ip) {
     process_ip_packet(sr, packet, len, interface);
+  } else if (eth_type == ethertype_arp) {
+    process_arp_packet(sr, packet, len, interface);
   }
 
 }/* end sr_ForwardPacket */
@@ -203,25 +222,4 @@ void sr_handle_ip_packet(struct sr_instance* sr,
     }
   /* If the IP Packet is not for interfaces of the router. */
   } 
- //    else {
- //    printf("If the IP Packet is not for interfaces of the router.\n");
-
- //    /* check routing table, and perform LPM */ 
- //    struct sr_rt* table_entry = get_longest_matching_prefix(sr, ip_hdr->ip_dst);
- //    if (table_entry) {
- //        /* check ARP cache */
- //        struct sr_arpentry * arp_entry = sr_arpcache_lookup (sr_cache, table_entry->gw.s_addr); 
- //        /* send frame to next hop*/
- //        if (arp_entry) {
- //          printf("There is a match in the ARP cache\n");
- //        /* */ 
- //        } else {
- // /* TODO: to be continued */
- //        }
- //    } else {
- //      /* TODO: to be continued */
-
- //    }
-
- //  }
 }
