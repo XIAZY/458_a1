@@ -73,13 +73,12 @@ void process_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len
     /* sr_ethernet_hdr_t* ethernet_header = (sr_ethernet_hdr_t*) packet; */
     sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
 
-    printf("Received IP packet of length %d.\n",len);
     /* Print out all packet header for debugging */
     print_hdrs(packet, len);
 
     /* check whether packet meets the minimum length first */
     if (len < sizeof (sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t)) {
-        printf("Error: The header length does not satisfy the minimum requirement.\n");
+        printf("Error: IP packet does not satisfy the minimum header length requirement.\n");
         return;
     }
 
@@ -92,14 +91,20 @@ void process_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len
 
     /* check that if this packet is for me */
     /* check if destination is one of the interface */
-    struct sr_if *dst_interface = sr_find_interface_with_ip(sr, ip_header->ip_dst);
+    struct sr_if *dst_interface = get_interface_from_ip(sr, ip_header->ip_dst);
     if (dst_interface) {
-        /* interface is not 0, for me !!! */
+        /* interface is not null, for me !!! */
         printf("IP packet for me!!\n");
         switch (ip_header->ip_p) {
           case ip_protocol_icmp: {
             /* if ICMP echo reuqest */
             printf("A ICMP packet.\n");
+
+            /* check whether packet meets the minimum length first */
+            if (len < sizeof (sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t)) {
+                printf("Error: ICMP packet does not satisfy the minimum header length requirement.\n");
+                return;
+            }
 
             /* find ICMP header */
             /* Question: is the echo request header a sr_icmp_hdr_t? or t3? */
@@ -239,7 +244,14 @@ void sr_handlepacket(struct sr_instance* sr,
 
     printf("*** -> Received packet of length %d \n",len);
 
+    /* check whether packet meets the minimum length first */
+    if (len < sizeof (sr_ethernet_hdr_t)) {
+        printf("Error: The header length does not satisfy the minimum requirement.\n");
+        return;
+    }
+
     uint16_t eth_type = ethertype(packet);
+    printf("Received packet with ethernet type %d \n", eth_type);
     if (eth_type == ethertype_ip) {
       process_ip_packet(sr, packet, len, interface);
     } else if (eth_type == ethertype_arp) {

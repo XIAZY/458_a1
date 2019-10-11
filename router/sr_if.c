@@ -193,32 +193,16 @@ void sr_print_if(struct sr_if* iface)
     Debug("\tinet addr %s\n",inet_ntoa(ip_addr));
 } /* -- sr_print_if -- */
 
-struct sr_if *sr_find_interface_with_ip(struct sr_instance* sr, uint32_t ip_addr) {
-    struct sr_if* if_walker = 0;
-    assert(ip_addr);
-    assert(sr);
-    printf("Function: sr_find_interface_with_ip\n");
-    print_addr_ip_int(ip_addr);
-
-    if_walker = sr->if_list;
-    while(if_walker) {
-        print_addr_ip_int(if_walker->ip);
-        if(if_walker->ip == ip_addr) {
-            /* or ip_addr + (~if_walker) == 0xffff */
-            printf("sr_find_interface_with_ip: interface found!\n");
-            return if_walker;
-        }
-        if_walker = if_walker->next;
-    }
-    return 0;
-}
-
 struct sr_if* get_interface_from_ip(struct sr_instance* sr, uint32_t ip) {
   struct sr_if* interface = sr->if_list;
+  printf("Function: get_interface_from_ip\n");
+  print_addr_ip_int(ip);
 
   while (interface) {
+    print_addr_ip_int(interface->ip);
     uint32_t interface_ip = interface->ip;
     if (interface_ip == ip) {
+      printf("get_interface_from_ip: interface found!\n");
       return interface;
     }
     interface = interface->next;

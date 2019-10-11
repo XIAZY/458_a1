@@ -253,7 +253,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     unsigned int length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
     uint8_t *icmp_packet = (uint8_t *)malloc(length);
     /* init all space to 0 */
-    memcpy(icmp_packet, 0, ETHER_ADDR_LEN);
+    memset(icmp_packet, 0, ETHER_ADDR_LEN);
 
     sr_ethernet_hdr_t *eth_header = (sr_ethernet_hdr_t *)icmp_packet;
     /* ip packet */
