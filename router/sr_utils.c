@@ -196,6 +196,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     *
     * Send original packet back to the sender.
     */
+    printf("sr_send_icmp_message called!! \n");
 
     /* Modify IP header */
     sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
@@ -223,7 +224,12 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     /* exit interface */
     struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
     /* Send packet */
+    if (!interface) {
+      printf("????? in sr_send_icmp_msg \n");
+      return;
+    }
     printf("send icmp echo back\n");
+
     send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
 }
 
@@ -241,6 +247,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
  void sr_send_t3_icmp_msg(struct sr_instance* sr, uint8_t* packet,
    unsigned int len, uint8_t icmp_case) {
     /* Create a new packet for icmp message */
+    printf("sr_send_t3_icmp_msg called!! \n");
 
     /* compute the length of the packet as sum of three headers */
     unsigned int length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
@@ -260,6 +267,10 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     struct sr_rt *rt_entry = get_longest_prefix_match(sr, sender_ip);
     /* exit interface */
     struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
+    if (!interface) {
+      printf("????? in sr_send_t3_icmp_msg \n");
+      return;
+    }
 
     ip_header->ip_v = 4;
     ip_header->ip_hl = sizeof(sr_ip_hdr_t) / 4;
@@ -282,27 +293,31 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     /* Find correspond icmp type and code */
     switch (icmp_case) {
       case unreachable_net: {
+        printf("case unreachable_net\n");
         icmp_header->icmp_type = icmp_type_unreachable;
         icmp_header->icmp_code = icmp_code_unreachable_net;
         break;
       }
       case unreachable_host: {
+        printf("case unreachable_host\n");
         icmp_header->icmp_type = icmp_type_unreachable;
         icmp_header->icmp_code = icmp_code_unreachable_host;
         break;
       }
       case unreachable_port: {
+        printf("case unreachable_port\n");
         icmp_header->icmp_type = icmp_type_unreachable;
         icmp_header->icmp_code = icmp_code_unreachable_port;
         break;
       }
       case timeout: {
+        printf("case timeout\n");
         icmp_header->icmp_type = icmp_type_timeout;
         icmp_header->icmp_code = icmp_code_time_exceeded;
         break;
       }
       default: {
-        fprintf(stderr, "Unrecognized icmp case (not destination unreachable or time exceeded).\n");
+        printf("Unrecognized icmp case (not destination unreachable or time exceeded).\n");
       }
     }
 

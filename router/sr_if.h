@@ -1,7 +1,7 @@
 /*-----------------------------------------------------------------------------
  * file:  sr_if.h
- * date:  Sun Oct 06 14:13:13 PDT 2002 
- * Contact: casado@stanford.edu 
+ * date:  Sun Oct 06 14:13:13 PDT 2002
+ * Contact: casado@stanford.edu
  *
  * Description:
  *
@@ -52,4 +52,5 @@ void sr_print_if_list(struct sr_instance*);
 void sr_print_if(struct sr_if*);
 
 struct sr_if* get_interface_from_ip(struct sr_instance*, uint32_t);
+struct sr_if *sr_find_interface_with_ip(struct sr_instance*, uint32_t);
 #endif /* --  sr_INTERFACE_H -- */
