@@ -236,7 +236,6 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
  * Destination port unreachable: type 3 code 3
  * Time exceeded: type 11 code 0
  *
- * i think this method is problematic
  */
  void sr_send_t3_icmp_msg(struct sr_instance* sr, uint8_t* packet,
    unsigned int len, uint8_t icmp_case) {
@@ -260,7 +259,6 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     struct sr_rt *rt_entry = get_longest_prefix_match(sr, sender_ip);
     /* exit interface */
     struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
-    /* Send packet */
 
     ip_header->ip_v = 4;
     ip_header->ip_hl = sizeof(sr_ip_hdr_t) / 4;
