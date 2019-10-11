@@ -118,6 +118,7 @@ enum sr_ip_protocol {
 
 enum icmp_type {
   icmp_type_echo_reply = 0,
+  icmp_type_echo_request = 8, /* if want to check type for an echo request */
   icmp_type_unreachable = 3,
   icmp_type_timeout = 11,
 };

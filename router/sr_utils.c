@@ -200,10 +200,6 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     /* Modify IP header */
     sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
 
-    struct sr_rt *rt_entry = get_longest_prefix_match(sr, ip_header->ip_src);
-    /* exit interface */
-    struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
-
     /* Get ip address of sender wich is the echo requestor, and assign as
      * destination address.
      * And source address will be specific-destination address of
@@ -223,6 +219,9 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     /* compute checksum for icmp header (starting with the ICMP Type field) */
     icmp_header->icmp_sum = cksum(icmp_header, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
 
+    struct sr_rt *rt_entry = get_longest_prefix_match(sr, requestor_ip);
+    /* exit interface */
+    struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
     /* Send packet */
     send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
 }
@@ -242,23 +241,44 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
  void sr_send_t3_icmp_msg(struct sr_instance* sr, uint8_t* packet,
    unsigned int len, uint8_t icmp_case) {
     /* Create a new packet for icmp message */
-    unsigned int length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t) + len;
-    uint8_t* icmp_packet = malloc(length);
 
-    /* Create ethernet header */
-    sr_ethernet_hdr_t* eth_header = (sr_ethernet_hdr_t*)icmp_packet;
-    /* icmp also need arp cache lookup */
-    memcpy(eth_header->ether_shost, eth_header->ether_dhost, ETHER_ADDR_LEN);
-    /*     memcpy(eth_header->ether_dhost,  find destination host , ETHER_ADDR_LEN); */
+    /* compute the length of the packet as sum of three headers */
+    unsigned int length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+    uint8_t *icmp_packet = (uint8_t *)malloc(length);
+    /* init all space to 0 */
+    memcpy(icmp_packet, 0, ETHER_ADDR_LEN);
+
+    sr_ethernet_hdr_t *eth_header = (sr_ethernet_hdr_t *)icmp_packet;
+    /* ip packet */
+    eth_header->ether_type = htons(ethertype_ip);
 
     /* Create IP header */
-    sr_ip_hdr_t* ip_header = (sr_ip_hdr_t *)(icmp_packet + sizeof(sr_ethernet_hdr_t));
-    uint32_t requestor_ip = ip_header->ip_src;
-    /*     ip_header->ip_src = ; */
-    ip_header->ip_dst = requestor_ip;
+    sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(icmp_packet + sizeof(sr_ethernet_hdr_t));
+    sr_ip_hdr_t *org_ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+    uint32_t sender_ip = ip_header->ip_src;
+
+    struct sr_rt *rt_entry = get_longest_prefix_match(sr, sender_ip);
+    /* exit interface */
+    struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
+    /* Send packet */
+
+    ip_header->ip_v = 4;
+    ip_header->ip_hl = sizeof(sr_ip_hdr_t) / 4;
+    ip_header->ip_tos = org_ip_header->ip_tos;
+    ip_header->ip_len = htons(length - sizeof(sr_ethernet_hdr_t)); /* length of the datagram */
+    ip_header->ip_id = htons(0);
+    ip_header->ip_off = htons(IP_DF);
+    ip_header->ip_ttl = 255;
+    ip_header->ip_p = ip_protocol_icmp;
+    ip_header->ip_src = interface->ip; /* ???? */
+    /* ip destination address is sender */
+    ip_header->ip_dst = ip_header->ip_src;
+    /* compute checksum for ip header */
+    ip_header->ip_sum = 0;
+    ip_header->ip_sum = cksum(ip_header, sizeof(sr_ip_hdr_t));
 
     /* Create ICMP header */
-    sr_icmp_t3_hdr_t* icmp_header = (sr_icmp_t3_hdr_t *)(icmp_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+    sr_icmp_t3_hdr_t *icmp_header = (sr_icmp_t3_hdr_t *)(icmp_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
 
     /* Find correspond icmp type and code */
     switch (icmp_case) {
@@ -269,17 +289,17 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
       }
       case unreachable_host: {
         icmp_header->icmp_type = icmp_type_unreachable;
-        icmp_header->icmp_code = icmp_code_unreachable_net;
+        icmp_header->icmp_code = icmp_code_unreachable_host;
         break;
       }
       case unreachable_port: {
         icmp_header->icmp_type = icmp_type_unreachable;
-        icmp_header->icmp_code = icmp_code_unreachable_net;
+        icmp_header->icmp_code = icmp_code_unreachable_port;
         break;
       }
       case timeout: {
-        icmp_header->icmp_type = icmp_type_unreachable;
-        icmp_header->icmp_code = icmp_code_unreachable_net;
+        icmp_header->icmp_type = icmp_type_timeout;
+        icmp_header->icmp_code = icmp_code_time_exceeded;
         break;
       }
       default: {
@@ -287,12 +307,11 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
       }
     }
 
+    /* copy data from original datagram */
+    memcpy(icmp_header->data, org_ip_header, ICMP_DATA_SIZE);
     /* compute checksum for icmp header */
     icmp_header->icmp_sum = 0;
+    icmp_header->icmp_sum = cksum(icmp_header, sizeof(sr_icmp_t3_hdr_t));
 
-
-    /* Compute total length of the packet */
-
-    /* Send packet */
-    /*     sr_send_packet(sr, packet, len, out_iface->name); */
+    send_packet(sr, icmp_packet, length, interface, rt_entry->gw.s_addr);
 }
