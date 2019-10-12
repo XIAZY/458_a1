@@ -150,5 +150,6 @@ void *sr_arpcache_timeout(void *cache_ptr);
 
 /* helper methods */
 void process_arp_request(struct sr_instance*, struct sr_arpreq*);
+void send_arp_request(struct sr_instance*, struct sr_arpreq*);
 void send_icmp_unreachable(struct sr_instance*, struct sr_arpreq*);
 #endif
