@@ -82,7 +82,7 @@ void process_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len
         return;
     }
 
-    /* check checksum*/
+    /* check checksum */
     printf("Compute cksum function: %d\n", cksum(ip_header, sizeof(sr_ip_hdr_t)));
     if (cksum(ip_header, sizeof(sr_ip_hdr_t))) { /* checksum is not zero */
         printf("Wrong Checksum: Ip packet has error inside.\n");
@@ -128,33 +128,57 @@ void process_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len
             /* if TCP or UDP -> ICMP port unreachable */
             printf("A TCP packet.\n");
             sr_send_t3_icmp_msg(sr, packet, len, unreachable_port);
-            break;
+            return;
           }
           case ip_protocol_udp: {
             printf("A UDP packet.\n");
             sr_send_t3_icmp_msg(sr, packet, len, unreachable_port);
-            break;
+            return;
           }
           default: {
-            printf("Not ICMP, TCP or UDP packet.\n");
+            printf("Not ICMP, TCP or UDP packet. Ignore.\n");
+            return;
           }
         }
 
     } else {
-        printf("IP packet not for me!!\n");
         /* not my packet */
+        printf("IP packet not for me!!\n");
+
+        /* Modify IP header (TTL) */
+        sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+        ip_header->ip_ttl --;
+
+        /* Check TTL, if 0: time exceeded */
+        if (ip_header->ip_ttl == 0) {
+          sr_send_t3_icmp_msg(sr, packet, len, timeout);
+          return;
+        }
+
+        /* Recompute checksum for ip packet */
+        ip_header->ip_sum = 0;
+        ip_header->ip_sum = cksum(ip_header, sizeof(sr_ip_hdr_t));
 
         /* check routing table to forward the packet */
+        struct sr_rt *rt_entry = get_longest_prefix_match(sr, ip_header->ip_dst);
+        if (!rt_entry) {
+          /* no match in rt: ICMP net unreachable */
+          printf("No matched destination ip in routing table.\n");
+          sr_send_t3_icmp_msg(sr, packet, len, unreachable_net);
+          return;
+      }
 
-        /* no match in rt: ICMP net unreachable */
+        /* find exit interface */
+        struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
+        if (!interface) {
+          printf("process_ip_packet: no interface ?????\n");
+          return;
+        }
 
-        /* if match */
-
-        /* check arp cache */
-
-        /* -> hit: send to next hop */
-
-        /* -> miss: send arp request */
+        /* if match call send packet: check arp cache
+         * -> hit: send to next hop
+         * -> miss: send arp request */
+        send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
     }
 
   /*========================================================================*/

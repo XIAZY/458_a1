@@ -225,7 +225,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
     /* Send packet */
     if (!interface) {
-      printf("????? in sr_send_icmp_msg \n");
+      printf("sr_send_icmp_msg: no interface ????\n");
       return;
     }
     printf("send icmp echo back\n");
@@ -268,7 +268,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     /* exit interface */
     struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
     if (!interface) {
-      printf("????? in sr_send_t3_icmp_msg \n");
+      printf("sr_send_t3_icmp_msg: no interface ????\n");
       return;
     }
 

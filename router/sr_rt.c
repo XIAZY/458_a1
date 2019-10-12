@@ -29,12 +29,12 @@
 
 struct sr_rt* get_longest_prefix_match(struct sr_instance* sr, uint32_t dest_ip) {
     struct sr_rt* routing_table_entry = sr->routing_table; /* linked list */
-    struct sr_rt* best_match;
+    struct sr_rt* best_match = 0;
     int longest_marched_prefix_len = 0;
     int matched_prefix_len = 0;
     while (routing_table_entry) {
         /* compare diff of netmask and ip between dest and entry, preceed if equal */
-        if ((dest_ip & routing_table_entry->mask.s_addr) 
+        if ((dest_ip & routing_table_entry->mask.s_addr)
         == (routing_table_entry->dest.s_addr & routing_table_entry->mask.s_addr)) {
             matched_prefix_len = dest_ip & routing_table_entry->mask.s_addr;
             if (matched_prefix_len > longest_marched_prefix_len) {
@@ -75,25 +75,25 @@ int sr_load_rt(struct sr_instance* sr,const char* filename)
     {
         sscanf(line,"%s %s %s %s",dest,gw,mask,iface);
         if(inet_aton(dest,&dest_addr) == 0)
-        { 
+        {
             fprintf(stderr,
                     "Error loading routing table, cannot convert %s to valid IP\n",
                     dest);
-            return -1; 
+            return -1;
         }
         if(inet_aton(gw,&gw_addr) == 0)
-        { 
+        {
             fprintf(stderr,
                     "Error loading routing table, cannot convert %s to valid IP\n",
                     gw);
-            return -1; 
+            return -1;
         }
         if(inet_aton(mask,&mask_addr) == 0)
-        { 
+        {
             fprintf(stderr,
                     "Error loading routing table, cannot convert %s to valid IP\n",
                     mask);
-            return -1; 
+            return -1;
         }
         if( clear_routing_table == 0 ){
             printf("Loading routing table from server, clear local routing table.\n");
@@ -137,7 +137,7 @@ struct in_addr gw, struct in_addr mask,char* if_name)
     /* -- find the end of the list -- */
     rt_walker = sr->routing_table;
     while(rt_walker->next){
-      rt_walker = rt_walker->next; 
+      rt_walker = rt_walker->next;
     }
 
     rt_walker->next = (struct sr_rt*)malloc(sizeof(struct sr_rt));
@@ -170,11 +170,11 @@ void sr_print_routing_table(struct sr_instance* sr)
     printf("Destination\tGateway\t\tMask\tIface\n");
 
     rt_walker = sr->routing_table;
-    
+
     sr_print_routing_entry(rt_walker);
     while(rt_walker->next)
     {
-        rt_walker = rt_walker->next; 
+        rt_walker = rt_walker->next;
         sr_print_routing_entry(rt_walker);
     }
 
