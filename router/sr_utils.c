@@ -218,7 +218,8 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     /* clear checksum field to 0 */
     icmp_header->icmp_sum = 0;
     /* compute checksum for icmp header (starting with the ICMP Type field) */
-    icmp_header->icmp_sum = cksum(icmp_header, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
+    icmp_header->icmp_sum = cksum(icmp_header, ntohs(ip_header->ip_len) - (ip_header->ip_hl * 4));
+    // icmp_header->icmp_sum = cksum(icmp_header, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
 
     struct sr_rt *rt_entry = get_longest_prefix_match(sr, requestor_ip);
     /* exit interface */
@@ -230,7 +231,8 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     }
     printf("send icmp echo back\n");
 
-    send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
+    send_packet(sr, packet, len, interface, requestor_ip);
+    // send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
 }
 
 
@@ -328,4 +330,5 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     icmp_header->icmp_sum = cksum(icmp_header, sizeof(sr_icmp_t3_hdr_t));
 
     send_packet(sr, icmp_packet, length, interface, rt_entry->gw.s_addr);
+    free(icmp_packet);
 }

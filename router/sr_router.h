@@ -82,4 +82,5 @@ void send_icmp_echo(struct sr_instance *sr, uint8_t *packet, unsigned int len, u
 void process_ip_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* interface);
 void process_arp_packet(struct sr_instance* sr, uint8_t* packet, unsigned int len, char* if_str);
 void process_arp_packet_request(struct sr_instance* sr, uint8_t* packet, unsigned int len, struct sr_if* interface);
+void process_arp_reply(struct sr_instance* sr, uint8_t* packet, unsigned int len, struct sr_if* interface);
 #endif /* SR_ROUTER_H */

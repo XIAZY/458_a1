@@ -12,32 +12,33 @@
 #include "sr_protocol.h"
 #include "sr_utils.h"
 
-void send_arp_request(struct sr_instance *sr, struct sr_arpreq *arp_request)
+void send_arp_request(struct sr_instance *sr, struct sr_arpreq *request)
 {
     int len = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
-    sr_ethernet_hdr_t* ethernet_header = malloc(len);
-    sr_arp_hdr_t* arp_header = (sr_arp_hdr_t*) (ethernet_header + sizeof(sr_arp_hdr_t));
-    struct sr_if *outgoing_interface = sr_get_interface(sr, arp_request->packets->iface);
+    uint8_t* out_arp_request = malloc(len);
+    sr_ethernet_hdr_t* ethernet_header = (sr_ethernet_hdr_t*) (out_arp_request);
+    sr_arp_hdr_t* arp_header = (sr_arp_hdr_t*) (out_arp_request + sizeof(sr_ethernet_hdr_t));
+    struct sr_if *outgoing_interface = sr_get_interface(sr, request->packets->iface);
 
     memset(ethernet_header->ether_dhost, 255, ETHER_ADDR_LEN);
     memcpy(ethernet_header->ether_shost, outgoing_interface->addr, ETHER_ADDR_LEN);
     ethernet_header->ether_type = htons(ethertype_arp);
 
-    /* set the header */
-    arp_header->ar_tip = arp_request->ip;
+    // /* set the header */
+    arp_header->ar_tip = request->ip;
     arp_header->ar_sip = outgoing_interface->ip;
-    arp_header->ar_hrd = htons(arp_hrd_ethernet);
-    arp_header->ar_pro = htons(ethertype_ip);
-    arp_header->ar_hln = ETHER_ADDR_LEN;
-    arp_header->ar_op = htons(arp_op_request);
-    arp_header->ar_pln = sizeof(uint32_t); /* 4 byte */
+    arp_header->ar_hrd = (unsigned short) htons(arp_hrd_ethernet);
+    arp_header->ar_pro = (unsigned short) htons(ethertype_ip);
+    arp_header->ar_hln = (unsigned char) ETHER_ADDR_LEN;
+    arp_header->ar_op = (unsigned short) htons(arp_op_request);
+    arp_header->ar_pln = (unsigned char) sizeof(uint32_t); /* 4 byte */
     memcpy(arp_header->ar_sha, outgoing_interface->addr, ETHER_ADDR_LEN);
+    memset(arp_header->ar_tha, 0x00, ETHER_ADDR_LEN);
 
-    /* send out the packet */
-    sr_send_packet(sr, (uint8_t*) ethernet_header, len, outgoing_interface->name);
-    free(ethernet_header);
-    arp_request->times_sent++;
-    arp_request->sent = time(NULL);
+    sr_send_packet(sr, out_arp_request, len, outgoing_interface->name);
+    free(out_arp_request);
+    request->sent = time(0);
+    request->times_sent++;
 }
 
 void process_arp_request(struct sr_instance *sr, struct sr_arpreq *arp_requset)
@@ -55,8 +56,6 @@ void process_arp_request(struct sr_instance *sr, struct sr_arpreq *arp_requset)
         {
             /* resend */
             send_arp_request(sr, arp_requset);
-            arp_requset->sent = time_now;
-            arp_requset->times_sent++;
         }
     }
 }

@@ -84,12 +84,13 @@ void process_ip_packet(struct sr_instance *sr, uint8_t *packet, unsigned int len
   }
 
   /* check checksum */
-  printf("Compute cksum function: %d\n", cksum(ip_header, sizeof(sr_ip_hdr_t)));
+  /* TODO: This part of code is buggy */
+/*   printf("Compute cksum function: %d\n", cksum(ip_header, sizeof(sr_ip_hdr_t)));
   if (cksum(ip_header, sizeof(sr_ip_hdr_t)))
-  { /* checksum is not zero */
+  {
     printf("Wrong Checksum: Ip packet has error inside.\n");
     return;
-  }
+  } */
 
   /* check that if this packet is for me */
   /* check if destination is one of the interface */
@@ -116,11 +117,12 @@ void process_ip_packet(struct sr_instance *sr, uint8_t *packet, unsigned int len
       /* Question: is the echo request header a sr_icmp_hdr_t? or t3? */
       sr_icmp_hdr_t *icmp_header = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
       /* check checksum */
-      if (cksum(icmp_header, sizeof(sr_icmp_hdr_t)))
-      { /* checksum is not zero */
-        printf("Wrong Checksum: Ip packet has error inside.\n");
+      /* TODO: this part of code is buggy */
+/*       if (cksum(icmp_header, sizeof(sr_icmp_hdr_t)))
+      {
+        printf("wrong checksum: ip packet has error inside.\n");
         return;
-      }
+      } */
 
       /* check if icmp type is echo reply(8) */
       if (icmp_header->icmp_type == icmp_type_echo_request)
@@ -212,7 +214,6 @@ void process_arp_packet(struct sr_instance *sr, uint8_t *packet, unsigned int le
   /* validate the packet */
   printf("got an arp packet\n");
 
-  sr_ethernet_hdr_t *ethernet_header = (sr_ethernet_hdr_t *)packet;
   sr_arp_hdr_t *arp_header = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
 
   if (len < sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t))
@@ -240,26 +241,57 @@ void process_arp_packet(struct sr_instance *sr, uint8_t *packet, unsigned int le
     return;
   }
   /* check arp entry */
-  struct sr_arpentry* entry = sr_arpcache_lookup(&sr->cache, arp_header->ar_sip);
+/*    struct sr_arpentry* entry = sr_arpcache_lookup(&sr->cache, arp_header->ar_sip);
   if (entry) {
     free(entry);
   } else {
-      /* add it to the arp table */
       struct sr_arpreq* arp_request = sr_arpcache_insert(&sr->cache, arp_header->ar_sha, arp_header->ar_sip);
       if(arp_request != NULL) {
-        /* send out the packets */
         send_arp_request(sr, arp_request);
       }
-  }
+  } 
+ */
 
   if (ntohs(arp_header->ar_op) == arp_op_request)
   {
     process_arp_packet_request(sr, packet, len, interface);
+  } else if (ntohs(arp_header->ar_op) == arp_op_reply) {
+    process_arp_reply(sr, packet, len, interface);
+  }
+}
+
+void process_arp_reply(struct sr_instance* sr, uint8_t* in_packet, unsigned int len, struct sr_if *interface) {
+  /* insert to cached table */
+  printf("got an arp reply\n");
+  sr_arp_hdr_t* request_arp_hdr = (sr_arp_hdr_t*) (in_packet + sizeof (sr_ethernet_hdr_t));
+  struct sr_arpreq* cached_arp_req = sr_arpcache_insert(&sr->cache, request_arp_hdr->ar_sha, request_arp_hdr->ar_sip);
+
+  if (cached_arp_req) {
+    struct sr_packet* packet = cached_arp_req->packets;
+    struct sr_if* interface;
+    sr_ethernet_hdr_t* ethernet_header;
+
+    while (packet) {
+      interface = sr_get_interface(sr, packet->iface);
+      if (!interface) {
+        return;
+      }
+
+      ethernet_header = (sr_ethernet_hdr_t*) (packet->buf);
+      memcpy(ethernet_header->ether_shost, interface->addr, ETHER_ADDR_LEN);
+      memcpy(ethernet_header->ether_dhost, request_arp_hdr->ar_sha, ETHER_ADDR_LEN);
+      sr_send_packet(sr, packet->buf, packet->len, packet->iface);
+
+      packet = packet -> next;
+    }
+
+    sr_arpreq_destroy(&sr->cache, cached_arp_req);
   }
 }
 
 void process_arp_packet_request(struct sr_instance *sr, uint8_t *packet, unsigned int len, struct sr_if *interface)
 {
+
   /* packet is a ethernet packet */
   printf("got an arp request\n");
   sr_ethernet_hdr_t* request_eth_hdr = (sr_ethernet_hdr_t*) packet;
@@ -354,23 +386,6 @@ void send_packet(struct sr_instance *sr, uint8_t *packet, unsigned int len, stru
         &sr->cache, destination_ip, packet, len, interface->name);
     process_arp_request(sr, arpreq);
   }
-}
-
-void send_icmp_echo(struct sr_instance *sr, uint8_t *packet, unsigned int len, uint8_t code)
-{
-  /* set ip header src and dst */
-  sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-  struct sr_rt *rt_entry = get_longest_prefix_match(sr, ip_header->ip_src);
-  struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
-  uint32_t dst = ip_header->ip_src;
-  ip_header->ip_src = ip_header->ip_dst;
-  ip_header->ip_dst = dst;
-  sr_icmp_hdr_t *icmp_header = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
-  icmp_header->icmp_sum = 0;
-  icmp_header->icmp_sum = cksum(icmp_header, ntohs(ip_header->ip_len) - (ip_header->ip_hl * 4));
-  icmp_header->icmp_code = code;
-  icmp_header->icmp_type = icmp_type_echo_reply;
-  send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
 }
 
 void sr_handle_ip_packet(struct sr_instance *sr,
