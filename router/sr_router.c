@@ -85,7 +85,7 @@ void process_ip_packet(struct sr_instance *sr, uint8_t *packet, unsigned int len
 
   /* check checksum */
   /* TODO: This part of code is buggy */
-/*   printf("Compute cksum function: %d\n", cksum(ip_header, sizeof(sr_ip_hdr_t)));
+  /*   printf("Compute cksum function: %d\n", cksum(ip_header, sizeof(sr_ip_hdr_t)));
   if (cksum(ip_header, sizeof(sr_ip_hdr_t)))
   {
     printf("Wrong Checksum: Ip packet has error inside.\n");
@@ -118,7 +118,7 @@ void process_ip_packet(struct sr_instance *sr, uint8_t *packet, unsigned int len
       sr_icmp_hdr_t *icmp_header = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
       /* check checksum */
       /* TODO: this part of code is buggy */
-/*       if (cksum(icmp_header, sizeof(sr_icmp_hdr_t)))
+      /*       if (cksum(icmp_header, sizeof(sr_icmp_hdr_t)))
       {
         printf("wrong checksum: ip packet has error inside.\n");
         return;
@@ -241,7 +241,7 @@ void process_arp_packet(struct sr_instance *sr, uint8_t *packet, unsigned int le
     return;
   }
   /* check arp entry */
-/*    struct sr_arpentry* entry = sr_arpcache_lookup(&sr->cache, arp_header->ar_sip);
+  /*    struct sr_arpentry* entry = sr_arpcache_lookup(&sr->cache, arp_header->ar_sip);
   if (entry) {
     free(entry);
   } else {
@@ -255,34 +255,40 @@ void process_arp_packet(struct sr_instance *sr, uint8_t *packet, unsigned int le
   if (ntohs(arp_header->ar_op) == arp_op_request)
   {
     process_arp_packet_request(sr, packet, len, interface);
-  } else if (ntohs(arp_header->ar_op) == arp_op_reply) {
+  }
+  else if (ntohs(arp_header->ar_op) == arp_op_reply)
+  {
     process_arp_reply(sr, packet, len, interface);
   }
 }
 
-void process_arp_reply(struct sr_instance* sr, uint8_t* in_packet, unsigned int len, struct sr_if *interface) {
+void process_arp_reply(struct sr_instance *sr, uint8_t *in_packet, unsigned int len, struct sr_if *interface)
+{
   /* insert to cached table */
   printf("got an arp reply\n");
-  sr_arp_hdr_t* request_arp_hdr = (sr_arp_hdr_t*) (in_packet + sizeof (sr_ethernet_hdr_t));
-  struct sr_arpreq* cached_arp_req = sr_arpcache_insert(&sr->cache, request_arp_hdr->ar_sha, request_arp_hdr->ar_sip);
+  sr_arp_hdr_t *request_arp_hdr = (sr_arp_hdr_t *)(in_packet + sizeof(sr_ethernet_hdr_t));
+  struct sr_arpreq *cached_arp_req = sr_arpcache_insert(&sr->cache, request_arp_hdr->ar_sha, request_arp_hdr->ar_sip);
 
-  if (cached_arp_req) {
-    struct sr_packet* packet = cached_arp_req->packets;
-    struct sr_if* interface;
-    sr_ethernet_hdr_t* ethernet_header;
+  if (cached_arp_req)
+  {
+    struct sr_packet *packet = cached_arp_req->packets;
+    struct sr_if *interface;
+    sr_ethernet_hdr_t *ethernet_header;
 
-    while (packet) {
+    while (packet)
+    {
       interface = sr_get_interface(sr, packet->iface);
-      if (!interface) {
+      if (!interface)
+      {
         return;
       }
 
-      ethernet_header = (sr_ethernet_hdr_t*) (packet->buf);
+      ethernet_header = (sr_ethernet_hdr_t *)(packet->buf);
       memcpy(ethernet_header->ether_shost, interface->addr, ETHER_ADDR_LEN);
       memcpy(ethernet_header->ether_dhost, request_arp_hdr->ar_sha, ETHER_ADDR_LEN);
       sr_send_packet(sr, packet->buf, packet->len, packet->iface);
 
-      packet = packet -> next;
+      packet = packet->next;
     }
 
     sr_arpreq_destroy(&sr->cache, cached_arp_req);
@@ -294,11 +300,11 @@ void process_arp_packet_request(struct sr_instance *sr, uint8_t *packet, unsigne
 
   /* packet is a ethernet packet */
   printf("got an arp request\n");
-  sr_ethernet_hdr_t* request_eth_hdr = (sr_ethernet_hdr_t*) packet;
-  sr_arp_hdr_t* request_arp_hdr = (sr_arp_hdr_t*) (packet + sizeof (sr_ethernet_hdr_t));
+  sr_ethernet_hdr_t *request_eth_hdr = (sr_ethernet_hdr_t *)packet;
+  sr_arp_hdr_t *request_arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
 
-  uint8_t* reply_packet = malloc(len);
-  sr_ethernet_hdr_t *ethernet_header = (sr_ethernet_hdr_t*) reply_packet;
+  uint8_t *reply_packet = malloc(len);
+  sr_ethernet_hdr_t *ethernet_header = (sr_ethernet_hdr_t *)reply_packet;
   sr_arp_hdr_t *arp_header = (sr_arp_hdr_t *)(ethernet_header + sizeof(sr_ethernet_hdr_t));
 
   memcpy(ethernet_header, request_eth_hdr, len);
