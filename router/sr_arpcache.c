@@ -24,7 +24,7 @@ void send_arp_request(struct sr_instance *sr, struct sr_arpreq *request)
     memcpy(ethernet_header->ether_shost, outgoing_interface->addr, ETHER_ADDR_LEN);
     ethernet_header->ether_type = htons(ethertype_arp);
 
-    // /* set the header */
+    /* set the header */
     arp_header->ar_tip = request->ip;
     arp_header->ar_sip = outgoing_interface->ip;
     arp_header->ar_hrd = (unsigned short) htons(arp_hrd_ethernet);

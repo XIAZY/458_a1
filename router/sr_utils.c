@@ -19,6 +19,38 @@ uint16_t cksum (const void *_data, int len) {
   return sum ? sum : 0xffff;
 }
 
+uint16_t check_ip_checksum(sr_ip_hdr_t *data) {
+  printf("Function: check_ip_checksum\n");
+  uint16_t org_ip_sum = data->ip_sum;
+  printf("check_ip_checksum: orgin check sum: %d\n", org_ip_sum);
+
+  data->ip_sum = 0;
+  uint16_t received_ip_checksum = cksum(data, sizeof(sr_ip_hdr_t));
+  printf("check_ip_checksum: received check sum: %d\n", received_ip_checksum);
+  data->ip_sum = org_ip_sum;
+  if (org_ip_sum != received_ip_checksum) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+uint16_t check_icmp_checksum(sr_icmp_hdr_t *data) {
+  printf("Function: check_icmp_checksum\n");
+  uint16_t org_icmp_sum = data->icmp_sum;
+  printf("check_icmp_checksum: orgin check sum: %d\n", org_icmp_sum);
+
+  data->icmp_sum = 0;
+  uint16_t received_icmp_checksum = cksum(data, sizeof(sr_icmp_hdr_t));
+  printf("check_icmp_checksum: received check sum: %d\n", received_icmp_checksum);
+  data->icmp_sum = org_icmp_sum;
+  if (org_icmp_sum != received_icmp_checksum) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
 
 uint16_t ethertype(uint8_t *buf) {
   sr_ethernet_hdr_t *ehdr = (sr_ethernet_hdr_t *)buf;
@@ -219,7 +251,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     icmp_header->icmp_sum = 0;
     /* compute checksum for icmp header (starting with the ICMP Type field) */
     icmp_header->icmp_sum = cksum(icmp_header, ntohs(ip_header->ip_len) - (ip_header->ip_hl * 4));
-    // icmp_header->icmp_sum = cksum(icmp_header, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
+    /* icmp_header->icmp_sum = cksum(icmp_header, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t)); */
 
     struct sr_rt *rt_entry = get_longest_prefix_match(sr, requestor_ip);
     /* exit interface */
@@ -232,7 +264,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     printf("send icmp echo back\n");
 
     send_packet(sr, packet, len, interface, requestor_ip);
-    // send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
+    /* send_packet(sr, packet, len, interface, rt_entry->gw.s_addr); */
 }
 
 

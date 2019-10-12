@@ -108,14 +108,6 @@ enum icmp_case {
   timeout = 19,
 };
 
-/*
-enum sr_ip_protocol {
-  ip_protocol_icmp = 1,
-  ip_protocol_tcp = 6,
-  ip_protocol_udp = 11,
-};
-*/
-
 enum icmp_type {
   icmp_type_echo_reply = 0,
   icmp_type_echo_request = 8, /* if want to check type for an echo request */
