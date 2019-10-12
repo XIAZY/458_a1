@@ -263,8 +263,8 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     }
     printf("send icmp echo back\n");
 
-    send_packet(sr, packet, len, interface, requestor_ip);
-    /* send_packet(sr, packet, len, interface, rt_entry->gw.s_addr); */
+    /* send_packet(sr, packet, len, interface, requestor_ip); */
+    send_packet(sr, packet, len, interface, rt_entry->gw.s_addr);
 }
 
 
@@ -287,7 +287,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     unsigned int length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
     uint8_t *icmp_packet = (uint8_t *)malloc(length);
     /* init all space to 0 */
-    memset(icmp_packet, 0, ETHER_ADDR_LEN);
+    memset(icmp_packet, 0, length);
 
     sr_ethernet_hdr_t *eth_header = (sr_ethernet_hdr_t *)icmp_packet;
     /* ip packet */
@@ -296,7 +296,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     /* Create IP header */
     sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(icmp_packet + sizeof(sr_ethernet_hdr_t));
     sr_ip_hdr_t *org_ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-    uint32_t sender_ip = ip_header->ip_src;
+    uint32_t sender_ip = org_ip_header->ip_src;
 
     struct sr_rt *rt_entry = get_longest_prefix_match(sr, sender_ip);
     /* exit interface */
@@ -312,11 +312,11 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     ip_header->ip_len = htons(length - sizeof(sr_ethernet_hdr_t)); /* length of the datagram */
     ip_header->ip_id = htons(0);
     ip_header->ip_off = htons(IP_DF);
-    ip_header->ip_ttl = 255;
+    ip_header->ip_ttl = INIT_TTL;
     ip_header->ip_p = ip_protocol_icmp;
-    ip_header->ip_src = interface->ip; /* ???? */
+    ip_header->ip_src = interface->ip;
     /* ip destination address is sender */
-    ip_header->ip_dst = ip_header->ip_src;
+    ip_header->ip_dst = sender_ip;
     /* compute checksum for ip header */
     ip_header->ip_sum = 0;
     ip_header->ip_sum = cksum(ip_header, sizeof(sr_ip_hdr_t));

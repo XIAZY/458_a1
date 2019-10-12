@@ -30,6 +30,8 @@
 #include "sr_if.h"
 #include "sr_rt.h"
 
+#define INIT_TTL 255
+
 uint16_t cksum(const void *_data, int len);
 
 uint16_t ethertype(uint8_t *buf);
