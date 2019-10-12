@@ -84,10 +84,11 @@ void process_ip_packet(struct sr_instance *sr, uint8_t *packet, unsigned int len
   }
 
   /* check checksum */
-  if (check_ip_checksum(ip_header)) {
+  /* this code is buggy */
+  /* if (check_ip_checksum(ip_header)) {
     printf("Wrong IP Checksum: Ip packet has error inside.\n");
     return;
-  }
+  } */
 
   /* check that if this packet is for me */
   /* check if destination is one of the interface */
@@ -113,10 +114,11 @@ void process_ip_packet(struct sr_instance *sr, uint8_t *packet, unsigned int len
       /* find ICMP header */
       sr_icmp_hdr_t *icmp_header = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
       /* check checksum */
-      if (check_icmp_checksum(icmp_header)) {
+      /* this code is buggy */
+/*       if (check_icmp_checksum(icmp_header)) {
         printf("wrong ICMP Checksum: ip packet has error inside.\n");
         return;
-      }
+      } */
 
       /* check if icmp type is echo reply(8) */
       if (icmp_header->icmp_type == icmp_type_echo_request)
