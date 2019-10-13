@@ -289,12 +289,13 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
 
     /* compute the length of the packet as sum of three headers */
     unsigned int length = sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t);
+
+    /* Create new ip packet */
     uint8_t *icmp_packet = (uint8_t *)malloc(length);
     /* init all space to 0 */
     memset(icmp_packet, 0, length);
 
     sr_ethernet_hdr_t *eth_header = (sr_ethernet_hdr_t *)icmp_packet;
-    /* ip packet */
     eth_header->ether_type = htons(ethertype_ip);
 
     /* Create IP header */
@@ -302,7 +303,7 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     sr_ip_hdr_t *org_ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
     uint32_t sender_ip = org_ip_header->ip_src;
 
-    struct sr_rt *rt_entry = get_longest_prefix_match(sr, sender_ip);
+    struct sr_rt *rt_entry = get_longest_prefix_match(sr, org_ip_header->ip_src);
     /* exit interface */
     struct sr_if *interface = sr_get_interface(sr, rt_entry->interface);
     if (!interface) {
@@ -318,7 +319,13 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     ip_header->ip_off = htons(IP_DF);
     ip_header->ip_ttl = INIT_TTL;
     ip_header->ip_p = ip_protocol_icmp;
-    ip_header->ip_src = interface->ip;
+    /* if is port unreachable, source ip is the destination ip of origin packet
+       else the source ip address is the outgoing interface address. */
+    if (icmp_case == unreachable_port) {
+      ip_header->ip_src = org_ip_header->ip_dst;
+    } else {
+      ip_header->ip_src = interface->ip;
+    }
     /* ip destination address is sender */
     ip_header->ip_dst = sender_ip;
     /* compute checksum for ip header */

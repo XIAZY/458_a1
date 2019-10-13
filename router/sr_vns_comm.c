@@ -572,6 +572,9 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
     assert(buf);
     assert(iface);
 
+    printf("Function: sr_send_packet.\n");
+    print_hdrs(buf, len);
+
     /* don't waste my time ... */
     if ( len < sizeof(struct sr_ethernet_hdr) ){
         fprintf(stderr , "** Error: packet is wayy to short \n");

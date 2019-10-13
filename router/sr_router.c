@@ -158,7 +158,7 @@ void process_ip_packet(struct sr_instance *sr, uint8_t *packet, unsigned int len
 
     /* Modify IP header (TTL) */
     sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
-    ip_header->ip_ttl--;
+    (ip_header->ip_ttl)--;
 
     /* Check TTL, if 0: time exceeded */
     if (ip_header->ip_ttl == 0)
