@@ -40,10 +40,10 @@ struct sr_rt* get_longest_prefix_match(struct sr_instance* sr, uint32_t dest_ip)
             /* if its a better match, update cache */
             best_match = routing_table_entry;
             longest_match_len = routing_table_entry->mask.s_addr;
-            routing_table_entry = routing_table_entry->next;
         }
-        return best_match;
+        routing_table_entry = routing_table_entry->next;
     }
+    return best_match;
 }
 
 int sr_load_rt(struct sr_instance* sr,const char* filename)
