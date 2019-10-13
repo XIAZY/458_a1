@@ -27,26 +27,30 @@ uint16_t check_ip_checksum(sr_ip_hdr_t *data) {
   data->ip_sum = 0;
   uint16_t received_ip_checksum = cksum(data, sizeof(sr_ip_hdr_t));
   printf("check_ip_checksum: received check sum: %d\n", received_ip_checksum);
-  data->ip_sum = org_ip_sum;
   if (org_ip_sum != received_ip_checksum) {
+    data->ip_sum = org_ip_sum;
     return 1;
   } else {
+    data->ip_sum = org_ip_sum;
     return 0;
   }
 }
 
-uint16_t check_icmp_checksum(sr_icmp_hdr_t *data) {
+uint16_t check_icmp_checksum(uint8_t *packet) {
   printf("Function: check_icmp_checksum\n");
-  uint16_t org_icmp_sum = data->icmp_sum;
+  sr_ip_hdr_t *ip_header = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+  sr_icmp_hdr_t *icmp_header = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
+  uint16_t org_icmp_sum = icmp_header->icmp_sum;
   printf("check_icmp_checksum: orgin check sum: %d\n", org_icmp_sum);
 
-  data->icmp_sum = 0;
-  uint16_t received_icmp_checksum = cksum(data, sizeof(sr_icmp_hdr_t));
+  icmp_header->icmp_sum = 0;
+  uint16_t received_icmp_checksum = cksum(icmp_header, ntohs(ip_header->ip_len) - (ip_header->ip_hl * 4));
   printf("check_icmp_checksum: received check sum: %d\n", received_icmp_checksum);
-  data->icmp_sum = org_icmp_sum;
   if (org_icmp_sum != received_icmp_checksum) {
+    icmp_header->icmp_sum = org_icmp_sum;
     return 1;
   } else {
+    icmp_header->icmp_sum = org_icmp_sum;
     return 0;
   }
 }
@@ -250,8 +254,8 @@ void print_hdrs(uint8_t *buf, uint32_t length) {
     /* clear checksum field to 0 */
     icmp_header->icmp_sum = 0;
     /* compute checksum for icmp header (starting with the ICMP Type field) */
+    /* ip header length: (ip_header->ip_hl * 4) */
     icmp_header->icmp_sum = cksum(icmp_header, ntohs(ip_header->ip_len) - (ip_header->ip_hl * 4));
-    /* icmp_header->icmp_sum = cksum(icmp_header, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t)); */
 
     struct sr_rt *rt_entry = get_longest_prefix_match(sr, requestor_ip);
     /* exit interface */

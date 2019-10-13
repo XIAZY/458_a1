@@ -51,7 +51,7 @@ void print_hdrs(uint8_t *buf, uint32_t length);
 
 /* custom methods */
 uint16_t check_ip_checksum(sr_ip_hdr_t *);
-uint16_t check_icmp_checksum(sr_icmp_hdr_t *);
+uint16_t check_icmp_checksum(uint8_t *);
 void sr_send_icmp_message(struct sr_instance*, uint8_t*, unsigned int);
 void sr_send_t3_icmp_msg(struct sr_instance*, uint8_t*, unsigned int, uint8_t);
 

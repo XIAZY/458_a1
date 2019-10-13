@@ -113,7 +113,7 @@ void process_ip_packet(struct sr_instance *sr, uint8_t *packet, unsigned int len
       /* find ICMP header */
       sr_icmp_hdr_t *icmp_header = (sr_icmp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t));
       /* check checksum */
-      if (check_icmp_checksum(icmp_header)) {
+      if (check_icmp_checksum(packet)) {
         printf("wrong ICMP Checksum: ip packet has error inside.\n");
         return;
       }
