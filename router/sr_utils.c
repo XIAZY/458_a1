@@ -25,7 +25,7 @@ uint16_t check_ip_checksum(sr_ip_hdr_t *data) {
   printf("check_ip_checksum: orgin check sum: %d\n", org_ip_sum);
 
   data->ip_sum = 0;
-  uint16_t received_ip_checksum = cksum(data, sizeof(sr_ip_hdr_t));
+  uint16_t received_ip_checksum = cksum(data, (data->ip_hl * 4));
   printf("check_ip_checksum: received check sum: %d\n", received_ip_checksum);
   if (org_ip_sum != received_ip_checksum) {
     data->ip_sum = org_ip_sum;
