@@ -41,6 +41,14 @@ void send_arp_request(struct sr_instance *sr, struct sr_arpreq *request)
     request->times_sent++;
 }
 
+void send_icmp_unreachable(struct sr_instance* sr, struct sr_arpreq* request) {
+    struct sr_packet* packet = request->packets;
+    while (packet) {
+        sr_send_t3_icmp_msg(sr, packet->buf, packet->len, unreachable_host);
+        packet = packet->next;
+    }
+}
+
 void process_arp_request(struct sr_instance *sr, struct sr_arpreq *arp_requset)
 {
     /* send out an arp request */
@@ -50,6 +58,7 @@ void process_arp_request(struct sr_instance *sr, struct sr_arpreq *arp_requset)
         if (arp_requset->times_sent >= 5)
         {
             /* icmp host unreachable */
+            send_icmp_unreachable(sr, arp_requset);
             sr_arpreq_destroy(&sr->cache, arp_requset);
         }
         else
