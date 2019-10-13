@@ -30,18 +30,20 @@
 struct sr_rt* get_longest_prefix_match(struct sr_instance* sr, uint32_t dest_ip) {
     struct sr_rt* routing_table_entry = sr->routing_table; /* linked list */
     struct sr_rt* best_match = 0;
-    while (routing_table_entry) {
+    int32_t longest_match_len = 0;
+    while (routing_table_entry)
+    {
         /* compare diff of netmask and ip between dest and entry, preceed if equal */
-        if ((dest_ip & routing_table_entry->mask.s_addr)
-        == (routing_table_entry->dest.s_addr & routing_table_entry->mask.s_addr)) {
-            if (!best_match || routing_table_entry->mask.s_addr > best_match->mask.s_addr) {
-                /* if its a better match, update cache */
-                best_match = routing_table_entry;
-            }
+        if (((dest_ip & routing_table_entry->mask.s_addr) == (routing_table_entry->dest.s_addr & routing_table_entry->mask.s_addr)) &&
+            (longest_match_len <= routing_table_entry->mask.s_addr))
+        {
+            /* if its a better match, update cache */
+            best_match = routing_table_entry;
+            longest_match_len = routing_table_entry->mask.s_addr;
+            routing_table_entry = routing_table_entry->next;
         }
-        routing_table_entry = routing_table_entry->next;
+        return best_match;
     }
-    return best_match;
 }
 
 int sr_load_rt(struct sr_instance* sr,const char* filename)
