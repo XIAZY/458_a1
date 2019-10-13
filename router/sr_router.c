@@ -288,14 +288,15 @@ void process_arp_packet_request(struct sr_instance *sr, uint8_t *packet, unsigne
 
   /* packet is a ethernet packet */
   printf("got an arp request\n");
+  uint8_t *reply_packet = malloc(len);
+  memcpy(reply_packet, packet, len);
+
   sr_ethernet_hdr_t *request_eth_hdr = (sr_ethernet_hdr_t *)packet;
   sr_arp_hdr_t *request_arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
 
-  uint8_t *reply_packet = malloc(len);
   sr_ethernet_hdr_t *ethernet_header = (sr_ethernet_hdr_t *)reply_packet;
-  sr_arp_hdr_t *arp_header = (sr_arp_hdr_t *)(ethernet_header + sizeof(sr_ethernet_hdr_t));
+  sr_arp_hdr_t *arp_header = (sr_arp_hdr_t *)(reply_packet + sizeof(sr_ethernet_hdr_t));
 
-  memcpy(ethernet_header, request_eth_hdr, len);
 
   /* construct the reply arp header */
   /* set hardware format to ethernet */
@@ -312,6 +313,10 @@ void process_arp_packet_request(struct sr_instance *sr, uint8_t *packet, unsigne
   arp_header->ar_tip = request_arp_hdr->ar_sip;
   /* set source ip to be the ip of interface */
   arp_header->ar_sip = interface->ip;
+  /* set source hw addr */
+  memcpy(arp_header->ar_sha, interface->addr, ETHER_ADDR_LEN);
+  /* set dest hw addr */
+  memcpy(arp_header->ar_tha, request_arp_hdr->ar_sha, ETHER_ADDR_LEN);
 
   /* construct ethernet header */
   /* change dest host to source */
