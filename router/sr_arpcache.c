@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <string.h>
+#include <stdbool.h> 
 #include "sr_arpcache.h"
 #include "sr_router.h"
 #include "sr_if.h"
@@ -41,12 +42,32 @@ void send_arp_request(struct sr_instance *sr, struct sr_arpreq *request)
     request->times_sent++;
 }
 
-void send_icmp_unreachable(struct sr_instance* sr, struct sr_arpreq* request) {
-    struct sr_packet* packet = request->packets;
+bool is_interface_existed(struct sr_instance* sr, unsigned char* hw_addr) {
+    struct sr_if* interface = sr->if_list;
+    while (interface) {
+        if (memcmp(hw_addr, interface->addr, ETHER_ADDR_LEN) == 0) {
+            return true;
+        }
+        interface = interface->next;
+    }
+    return false;
+}
+
+void process_unreachable(struct sr_instance* sr, struct sr_arpreq* arp_request) {
+    struct sr_packet* packet = arp_request->packets;
+    sr_ethernet_hdr_t* ethenet_header;
+    unsigned char* packet_dest_addr;
     while (packet) {
-        sr_send_t3_icmp_msg(sr, packet->buf, packet->len, unreachable_host);
+        ethenet_header = (sr_ethernet_hdr_t*) (packet->buf);
+        packet_dest_addr = (unsigned char*) ethenet_header->ether_dhost;
+
+        if (is_interface_existed(sr, packet_dest_addr) == true) {
+            sr_send_t3_icmp_msg(sr, packet->buf, packet->len, unreachable_host);
+        }
+
         packet = packet->next;
     }
+    sr_arpreq_destroy(&sr->cache, arp_request);
 }
 
 void process_arp_request(struct sr_instance *sr, struct sr_arpreq *arp_requset)
@@ -58,8 +79,7 @@ void process_arp_request(struct sr_instance *sr, struct sr_arpreq *arp_requset)
         if (arp_requset->times_sent >= 5)
         {
             /* icmp host unreachable */
-            send_icmp_unreachable(sr, arp_requset);
-            sr_arpreq_destroy(&sr->cache, arp_requset);
+            process_unreachable(sr, arp_requset);
         }
         else
         {

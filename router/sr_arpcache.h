@@ -69,6 +69,7 @@
 #include <inttypes.h>
 #include <time.h>
 #include <pthread.h>
+#include <stdbool.h> 
 #include "sr_if.h"
 #include "sr_utils.h"
 
@@ -151,5 +152,5 @@ void *sr_arpcache_timeout(void *cache_ptr);
 /* helper methods */
 void process_arp_request(struct sr_instance*, struct sr_arpreq*);
 void send_arp_request(struct sr_instance*, struct sr_arpreq*);
-void send_icmp_unreachable(struct sr_instance*, struct sr_arpreq*);
+void process_unreachable(struct sr_instance*, struct sr_arpreq*);
 #endif
