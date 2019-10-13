@@ -84,10 +84,11 @@ void process_ip_packet(struct sr_instance *sr, uint8_t *packet, unsigned int len
   }
 
   /* check checksum */
-  if (check_ip_checksum(ip_header)) {
+  /* this code is buggy */
+  /* if (check_ip_checksum(ip_header)) {
     printf("Wrong IP Checksum: Ip packet has error inside.\n");
     return;
-  }
+  } */
 
   /* check that if this packet is for me */
   /* check if destination is one of the interface */
